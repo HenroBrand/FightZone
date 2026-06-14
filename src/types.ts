@@ -1,6 +1,6 @@
 export interface NewsItem {
   id: string;
-  source: 'MMA Fighting' | 'Boxing Scene' | 'BJJ Heroes' | 'FIGHT ZONE';
+  source: string;
   category: 'MMA' | 'BOXING' | 'BJJ' | 'KICKBOXING' | 'WRESTLING';
   title: string;
   link: string;

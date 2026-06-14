@@ -43,6 +43,83 @@ async function fetchWithTimeout(url: string, options = {}, timeout = 6000) {
   }
 }
 
+// Proxied RSS fetcher with dual failover for server environments
+async function fetchRssWithProxy(targetUrl: string): Promise<string> {
+  const triedErrors: string[] = [];
+
+  // 1. Try api.allorigins.win
+  try {
+    const allOriginsUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+    const response = await fetchWithTimeout(allOriginsUrl);
+    if (response.ok) {
+      const data = await response.json();
+      if (data && typeof data.contents === 'string') {
+        const contents = data.contents.trim();
+        if (contents.length > 100) {
+          return contents;
+        }
+      }
+    }
+    throw new Error(`AllOrigins status: ${response.status}`);
+  } catch (err: any) {
+    console.warn(`Server AllOrigins proxy failed for ${targetUrl}:`, err.message || err);
+    triedErrors.push(`AllOrigins: ${err.message || err}`);
+  }
+
+  // 2. Try corsproxy.io
+  try {
+    const corsProxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+    const response = await fetchWithTimeout(corsProxyUrl);
+    if (response.ok) {
+      const text = await response.text();
+      const trimmed = text.trim();
+      if (trimmed.length > 100) {
+        return trimmed;
+      }
+    }
+    throw new Error(`CorsProxy status: ${response.status}`);
+  } catch (err: any) {
+    console.warn(`Server CorsProxy failed for ${targetUrl}:`, err.message || err);
+    triedErrors.push(`CorsProxy: ${err.message || err}`);
+  }
+
+  // 3. Try api.codetabs.com
+  try {
+    const codetabsUrl = `https://api.codetabs.com/v1/proxy?url=${encodeURIComponent(targetUrl)}`;
+    const response = await fetchWithTimeout(codetabsUrl);
+    if (response.ok) {
+      const text = await response.text();
+      const trimmed = text.trim();
+      if (trimmed.length > 100) {
+        return trimmed;
+      }
+    }
+    throw new Error(`Codetabs status: ${response.status}`);
+  } catch (err: any) {
+    console.warn(`Server Codetabs failed for ${targetUrl}:`, err.message || err);
+    triedErrors.push(`Codetabs: ${err.message || err}`);
+  }
+
+  // 4. Try thingproxy.freeboard.io
+  try {
+    const thingproxyUrl = `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(targetUrl)}`;
+    const response = await fetchWithTimeout(thingproxyUrl);
+    if (response.ok) {
+      const text = await response.text();
+      const trimmed = text.trim();
+      if (trimmed.length > 100) {
+        return trimmed;
+      }
+    }
+    throw new Error(`Thingproxy status: ${response.status}`);
+  } catch (err: any) {
+    console.warn(`Server Thingproxy failed for ${targetUrl}:`, err.message || err);
+    triedErrors.push(`Thingproxy: ${err.message || err}`);
+  }
+
+  throw new Error(`Server proxies exhausted: [${triedErrors.join(" | ")}]`);
+}
+
 // Regex RSS Parser
 function parseRss(xmlText: string, source: string, category: 'MMA' | 'BOXING' | 'BJJ' | 'KICKBOXING' | 'WRESTLING'): NewsItem[] {
   const items: NewsItem[] = [];
@@ -322,15 +399,11 @@ app.get("/api/news", async (req, res) => {
 
   const fetchPromises = feeds.map(async (feed) => {
     try {
-      const response = await fetchWithTimeout(feed.url);
-      if (!response.ok) {
-        throw new Error(`HTTP error ${response.status}`);
-      }
-      const text = await response.text();
+      const text = await fetchRssWithProxy(feed.url);
       const parsed = parseRss(text, feed.source, feed.category as any);
       results.push(...parsed);
     } catch (err: any) {
-      console.warn(`Feed unreachable: ${feed.source}`);
+      console.warn(`Feed unreachable through proxies: ${feed.source}`);
       // We will gracefully skip failing feeds so the app doesn't crash
     }
   });

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { NewsItem, AISummaryResponse } from '../types';
 import { RefreshCw, Sparkles, AlertCircle, ExternalLink, Calendar, Flame } from 'lucide-react';
 import { formatToSAST } from '../utils/dateHelper';
+import { fetchAllRssFeeds } from '../utils/rssFetcher';
 
 export default function NewsFeed() {
   const [news, setNews] = useState<NewsItem[]>([]);
@@ -11,20 +12,16 @@ export default function NewsFeed() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState('');
 
-  // Fetch News from server endpoint
+  // Fetch News directly using our robust proxy-based RSS fetcher
   const fetchNews = async () => {
     setLoading(true);
     setError('');
     try {
-      const response = await fetch('/api/news');
-      if (!response.ok) {
-        throw new Error(`Failed to load combat news feed. Status: ${response.status}`);
-      }
-      const data: NewsItem[] = await response.json();
+      const data = await fetchAllRssFeeds();
       setNews(data);
     } catch (err: any) {
-      console.error(err);
-      setError('Could not load latest fight news. Check your server connection, bru!');
+      console.warn("Client news fetch error:", err);
+      setError('Could not load latest fight news. The proxy server and backup are currently exhausted. Please try again in a bit, bru!');
     } finally {
       setLoading(false);
     }
@@ -183,9 +180,16 @@ export default function NewsFeed() {
         )}
 
         {error && (
-          <div className="bg-black border-4 border-[#C8001A] p-5 text-center text-sm font-mono text-red-100 uppercase" id="news-error">
-            <AlertCircle className="w-6 h-6 mx-auto mb-2 text-[#C8001A]" />
-            {error}
+          <div className="bg-black border-4 border-[#C8001A] p-5 text-center text-sm font-mono text-red-100 uppercase flex flex-col items-center gap-3" id="news-error">
+            <AlertCircle className="w-6 h-6 text-[#C8001A]" />
+            <span>{error}</span>
+            <button
+              onClick={fetchNews}
+              className="mt-2 bg-[#C8001A] text-white hover:bg-[#F5C400] hover:text-black font-impact text-sm italic px-5 py-2 transition-all uppercase flex items-center gap-2 border-2 border-black select-none active:translate-y-0.5"
+            >
+              <RefreshCw className="w-4 h-4" />
+              RETRY FETCH
+            </button>
           </div>
         )}
 

@@ -9,6 +9,7 @@ import SearchFilter from './components/SearchFilter';
 import { auth, onAuthStateChanged, db, collection, setDoc, doc, deleteDoc, onSnapshot } from './lib/firebase';
 import { handleFirestoreError } from './lib/firestoreError';
 import { crawlLiveEvents } from './utils/fightCrawl';
+import { fetchAllRssFeeds } from './utils/rssFetcher';
 import { NewsItem, EventItem, PinnedEvent, OperationType } from './types';
 import { Flame, Trophy, Calendar, Sparkles, Plus, Check } from 'lucide-react';
 
@@ -40,11 +41,8 @@ export default function App() {
     const fetchRootNews = async () => {
       setNewsLoading(true);
       try {
-        const response = await fetch('/api/news');
-        if (response.ok) {
-          const data: NewsItem[] = await response.json();
-          setSharedNews(data);
-        }
+        const data = await fetchAllRssFeeds();
+        setSharedNews(data);
       } catch (err) {
         console.warn("FIGHT ZONE: Root-level news cached fetch bypassed:", err);
       } finally {
