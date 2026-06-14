@@ -1,0 +1,6 @@
+{
+  "name": "FIGHT ZONE SA",
+  "description": "Your ultimate South African combat sports tracker with live news feeds, upcoming fight schedules, personal pinboards, and AI fight summarization.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,42 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with basic display information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The unique user ID" },
+        "email": { "type": "string", "format": "email", "description": "The user's email address" },
+        "displayName": { "type": "string", "description": "The user's display name" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" }
+      },
+      "required": ["uid", "email"]
+    },
+    "PinnedEvent": {
+      "title": "PinnedEvent",
+      "description": "Information about a combat sports event pinned to a user's calendar",
+      "type": "object",
+      "properties": {
+        "eventId": { "type": "string", "description": "ID of the event from source data" },
+        "name": { "type": "string", "description": "Name of the event or fight" },
+        "date": { "type": "string", "description": "Date and time of the event in ISO or UTC format" },
+        "sport": { "type": "string", "description": "The sports discipline e.g. MMA, BOXING, BJJ, KICKBOXING, WRESTLING" },
+        "location": { "type": "string", "description": "Location of the event" },
+        "mainEvent": { "type": "string", "description": "The headlining fighters/match" },
+        "pinnedAt": { "type": "string", "format": "date-time", "description": "Timestamp when user pinned the event" },
+        "userId": { "type": "string", "description": "ID of the pinning user" }
+      },
+      "required": ["eventId", "name", "date", "sport", "pinnedAt", "userId"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User document containing public/private details"
+    },
+    "users/{userId}/pinnedEvents/{eventId}": {
+      "schema": "PinnedEvent",
+      "description": "Events pinned to the user's sports calendar"
+    }
+  }
+}

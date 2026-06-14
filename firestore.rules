@@ -1,0 +1,61 @@
+rules_version = '2';
+service cloudfirestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Entity shapes
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email'])
+        && data.uid is string
+        && data.email is string
+        && data.email.size() <= 256;
+    }
+
+    function isValidPinnedEvent(data) {
+      return data.keys().hasAll(['eventId', 'name', 'date', 'sport', 'pinnedAt', 'userId'])
+        && data.eventId is string && data.eventId.size() <= 128
+        && data.name is string && data.name.size() <= 256
+        && data.date is string && data.date.size() <= 128
+        && data.sport is string && data.sport.size() <= 64
+        && data.userId is string && data.userId.size() <= 128;
+    }
+
+    // Rules for users
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidUser(request.resource.data);
+      allow delete: if false; // Profiles shouldn't be deleted by client
+
+      // Subcollection for pinned events
+      match /pinnedEvents/{eventId} {
+        allow list, get: if isOwner(userId);
+        allow create: if isOwner(userId) 
+          && isValidId(eventId)
+          && isValidPinnedEvent(request.resource.data)
+          && request.resource.data.userId == request.auth.uid;
+        allow update: if isOwner(userId)
+          && isValidPinnedEvent(request.resource.data)
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.eventId == resource.data.eventId;
+        allow delete: if isOwner(userId);
+      }
+    }
+  }
+}
